@@ -1,8 +1,10 @@
 export type SubjectId =
-  | "club" | "buddhism" | "english" | "compsci" | "health"
-  | "math" | "mathadv" | "trigono" | "geo" | "thai"
-  | "science" | "pisa" | "art" | "guidance" | "history"
-  | "chinese" | "project";
+  | "homeroom" | "trigono" | "geo" | "math" | "thai"
+  | "englishls" | "englishlsB" | "scouts"
+  | "science" | "scienceB" | "english" | "career"
+  | "pisa" | "art" | "guidance" | "mathadv" | "chinese"
+  | "club" | "buddhism" | "compsci" | "health" | "volunteer"
+  | "history" | "mathproject" | "pe" | "anticorrupt";
 
 export type Subject = {
   name: string;
@@ -13,48 +15,81 @@ export type Subject = {
 };
 
 export const SUBJECTS: Record<SubjectId, Subject> = {
-  club:     { name: "ชุมนุมวิชาการ",      short: "ชุมนุม",  color: "#a16207" },
-  buddhism: { name: "พระพุทธศาสนา",       short: "พระพุทธ", color: "#f97316", teacher: "ครูฐิติพงศ์", room: "5415" },
-  english:  { name: "ภาษาอังกฤษ",         short: "อังกฤษ",  color: "#3b82f6", teacher: "ครูสุดา",     room: "5312" },
-  compsci:  { name: "วิทยาการคำนวณ",      short: "วิทย.คำ", color: "#a855f7", teacher: "ครูวิทวัส",   room: "คอม 2" },
-  health:   { name: "สุขศึกษา",           short: "สุขศึกษา", color: "#10b981", teacher: "ครูอนันต์",   room: "โรงยิม" },
-  math:     { name: "คณิตศาสตร์",         short: "คณิตฯ",   color: "#ef4444", teacher: "ครูปิยะ",     room: "5203" },
-  mathadv:  { name: "คณิตศาสตร์เพิ่มเติม", short: "คณิตเพิ่ม", color: "#dc2626", teacher: "ครูปิยะ",     room: "5203" },
-  trigono:  { name: "ตรีโกณมิติ",         short: "ตรีโก",   color: "#f43f5e", teacher: "ครูปิยะ",     room: "5203" },
-  geo:      { name: "ภูมิศาสตร์",         short: "ภูมิฯ",   color: "#0891b2", teacher: "ครูมาลี",     room: "5410" },
-  thai:     { name: "ภาษาไทย",            short: "ไทย",     color: "#ec4899", teacher: "ครูวรรณา",    room: "5108" },
-  science:  { name: "วิทยาศาสตร์",        short: "วิทย์",   color: "#22c55e", teacher: "ครูนพดล",     room: "แล็บ 1" },
-  pisa:     { name: "PISA",               short: "PISA",    color: "#64748b" },
-  art:      { name: "ศิลปะ",              short: "ศิลปะ",   color: "#8b5cf6", teacher: "ครูจิรา",     room: "ศิลป์ 1" },
-  guidance: { name: "แนะแนว",             short: "แนะแนว",  color: "#14b8a6", room: "ห้องแนะแนว" },
-  history:  { name: "ประวัติศาสตร์",      short: "ประวัติ", color: "#b45309", teacher: "ครูมาลี",     room: "5410" },
-  chinese:  { name: "ภาษาจีน",            short: "จีน",     color: "#e11d48", teacher: "ครูหลี่",     room: "5320" },
-  project:  { name: "โครงงาน",            short: "โครงงาน", color: "#0ea5e9" },
+  homeroom:    { name: "โฮมรูม",              short: "โฮมรูม",  color: "#94a3b8" },
+  trigono:     { name: "ตรีโกณมิติ",           short: "ตรีโก",   color: "#f43f5e", teacher: "ครูสุนิสา",      room: "5415" },
+  geo:         { name: "ภูมิศาสตร์",           short: "ภูมิฯ",   color: "#0891b2", teacher: "ครูสุกัญญา",     room: "5415" },
+  math:        { name: "คณิตศาสตร์",           short: "คณิตฯ",   color: "#ef4444", teacher: "ครูรัตนา",       room: "5415" },
+  thai:        { name: "ภาษาไทย",              short: "ไทย",     color: "#ec4899", teacher: "ครูฐิติพงศ์",    room: "5415" },
+  englishls:   { name: "อังกฤษฟัง-พูด",        short: "อ.ฟัง-พูด", color: "#2563eb", teacher: "ครูธนาดา",     room: "5418" },
+  englishlsB:  { name: "อังกฤษฟัง-พูด",        short: "อ.ฟัง-พูด", color: "#2563eb", teacher: "ครูธนาดา",     room: "5415" },
+  scouts:      { name: "ลูกเสือ/เนตรนารี/ยุวกาชาด", short: "ลูกเสือ", color: "#65a30d" },
+  science:     { name: "วิทยาศาสตร์",          short: "วิทย์",   color: "#22c55e", teacher: "ครูปรานวดี",     room: "4202" },
+  scienceB:    { name: "วิทยาศาสตร์",          short: "วิทย์",   color: "#22c55e", teacher: "ครูปรานวดี",     room: "5415" },
+  english:     { name: "ภาษาอังกฤษ",           short: "อังกฤษ",  color: "#3b82f6", teacher: "ครูเมทินี",      room: "5415" },
+  career:      { name: "การงานอาชีพ",          short: "การงาน",  color: "#d97706", teacher: "ครูวศินี",       room: "7205" },
+  pisa:        { name: "ประชุมระดับ / PISA",   short: "PISA",    color: "#64748b" },
+  art:         { name: "ศิลปะ",                short: "ศิลปะ",   color: "#8b5cf6", teacher: "ครูธนาพิพัฒน์",  room: "4109" },
+  guidance:    { name: "แนะแนว",               short: "แนะแนว",  color: "#14b8a6", teacher: "ครูปิยาภรณ์",    room: "5415" },
+  mathadv:     { name: "คณิตศาสตร์เพิ่มเติม",  short: "คณิตเพิ่ม", color: "#dc2626", teacher: "ครูโกรบ",      room: "5415" },
+  chinese:     { name: "ภาษาจีน",              short: "จีน",     color: "#e11d48", teacher: "ครูวิชญ์ / ครูฐิตา", room: "ห้องโสตฯ" },
+  club:        { name: "ชุมนุมวิชาการ",        short: "ชุมนุม",  color: "#a16207" },
+  buddhism:    { name: "พระพุทธศาสนา",         short: "พระพุทธ", color: "#f97316", teacher: "ครูสุกัญญา",     room: "5415" },
+  compsci:     { name: "วิทยาการคำนวณ",        short: "วิทย.คำ", color: "#a855f7", teacher: "ครูคอม A",       room: "COM 1" },
+  health:      { name: "สุขศึกษา",             short: "สุขศึกษา", color: "#10b981", teacher: "ครูบุษบา",      room: "5415" },
+  volunteer:   { name: "จิตอาสา",              short: "จิตอาสา", color: "#0d9488" },
+  history:     { name: "ประวัติศาสตร์",        short: "ประวัติ", color: "#b45309", teacher: "ครูกรภัทร์",     room: "5415" },
+  mathproject: { name: "โครงงานคณิตศาสตร์",    short: "โครงงาน", color: "#0ea5e9", teacher: "ครูมัลลิกา",     room: "5415" },
+  pe:          { name: "พลศึกษา",              short: "พละ",     color: "#84cc16", teacher: "ครูอภิรักษ์",    room: "ลานสุคนธ์" },
+  anticorrupt: { name: "ป้องกันทุจริต",        short: "ป้องกันฯ", color: "#78716c", teacher: "ครูกรภัทร์",     room: "5415" },
 };
 
-/** เวลาเรียนแต่ละคาบ (คาบ 4 ต่อด้วยพักเที่ยง) */
+/** เวลาเรียนแต่ละคาบ (คาบ 0 = โฮมรูม, คาบ 4 ว่างทุกวัน) */
 export const PERIODS: Record<number, { start: string; end: string }> = {
-  1: { start: "08.15", end: "09.05" },
-  2: { start: "09.05", end: "09.55" },
-  3: { start: "09.55", end: "10.45" },
-  4: { start: "10.45", end: "11.35" },
-  5: { start: "11.50", end: "12.40" },
-  6: { start: "12.40", end: "13.30" },
-  7: { start: "13.30", end: "14.20" },
-  8: { start: "14.20", end: "15.10" },
+  0:  { start: "08.00", end: "08.15" },
+  1:  { start: "08.15", end: "09.05" },
+  2:  { start: "09.05", end: "09.55" },
+  3:  { start: "10.10", end: "11.00" },
+  4:  { start: "11.00", end: "11.50" },
+  5:  { start: "11.50", end: "12.40" },
+  6:  { start: "12.40", end: "13.30" },
+  7:  { start: "13.30", end: "14.20" },
+  8:  { start: "14.20", end: "15.10" },
+  9:  { start: "15.10", end: "16.00" },
+  10: { start: "16.00", end: "16.50" },
+  11: { start: "16.50", end: "17.40" },
 };
 
 export const DAY_NAMES = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 export const DAY_SHORT = ["", "จ.", "อ.", "พ.", "พฤ.", "ศ.", ""];
 export const ALL_DAYS = [1, 2, 3, 4, 5] as const;
 
-/** ตารางเรียน: day (1=จันทร์) → period → วิชา */
+/** ตารางเรียนจริง: day (1=จันทร์) → คาบ → วิชา */
 const TIMETABLE: Record<number, Record<number, SubjectId>> = {
-  1: { 1: "trigono", 2: "trigono", 3: "geo", 5: "math", 6: "thai", 7: "science", 8: "english" },
-  2: { 1: "science", 2: "science", 3: "english", 5: "geo", 6: "math", 7: "art", 8: "history" },
-  3: { 1: "pisa", 2: "art", 3: "math", 5: "guidance", 6: "science", 7: "thai", 8: "chinese" },
-  4: { 1: "club", 2: "buddhism", 3: "english", 4: "health", 5: "compsci", 6: "compsci", 7: "math", 8: "thai" },
-  5: { 1: "math", 2: "mathadv", 3: "history", 5: "chinese", 6: "project", 7: "project", 8: "health" },
+  // จันทร์
+  1: {
+    0: "homeroom", 1: "trigono", 2: "trigono", 3: "geo",
+    5: "math", 6: "thai", 7: "englishls", 8: "scouts",
+  },
+  // อังคาร
+  2: {
+    0: "homeroom", 1: "science", 2: "science", 3: "english",
+    5: "geo", 6: "math", 7: "thai", 8: "career", 9: "career",
+  },
+  // พุธ
+  3: {
+    0: "homeroom", 1: "pisa", 2: "art", 3: "math",
+    5: "guidance", 6: "scienceB", 7: "mathadv", 8: "thai", 9: "chinese",
+  },
+  // พฤหัสบดี
+  4: {
+    0: "homeroom", 1: "club", 2: "buddhism", 3: "english",
+    5: "compsci", 6: "compsci", 7: "englishlsB", 8: "health", 9: "math", 10: "volunteer",
+  },
+  // ศุกร์
+  5: {
+    0: "homeroom", 1: "math", 2: "mathadv", 3: "history",
+    5: "chinese", 6: "mathproject", 7: "mathproject", 8: "art", 9: "pe", 10: "anticorrupt",
+  },
 };
 
 export type DaySlot = {
