@@ -30,7 +30,7 @@ export const SUBJECTS: Record<SubjectId, Subject> = {
   pisa:        { name: "ประชุมระดับ / PISA",   short: "PISA",    color: "#64748b" },
   art:         { name: "ศิลปะ",                short: "ศิลปะ",   color: "#8b5cf6", teacher: "ครูธนาพิพัฒน์",  room: "4109" },
   guidance:    { name: "แนะแนว",               short: "แนะแนว",  color: "#14b8a6", teacher: "ครูปิยาภรณ์",    room: "5415" },
-  mathadv:     { name: "คณิตศาสตร์เพิ่มเติม",  short: "คณิตเพิ่ม", color: "#dc2626", teacher: "ครูโกรบ",      room: "5415" },
+  mathadv:     { name: "คณิตศาสตร์เสริม",      short: "คณิตเสริม", color: "#dc2626", teacher: "ครูโกรบ",      room: "5415" },
   chinese:     { name: "ภาษาจีน",              short: "จีน",     color: "#e11d48", teacher: "ครูวิชญ์ / ครูฐิตา", room: "ห้องโสตฯ" },
   club:        { name: "ชุมนุมวิชาการ",        short: "ชุมนุม",  color: "#a16207" },
   buddhism:    { name: "พระพุทธศาสนา",         short: "พระพุทธ", color: "#f97316", teacher: "ครูสุกัญญา",     room: "5415" },
@@ -43,7 +43,7 @@ export const SUBJECTS: Record<SubjectId, Subject> = {
   anticorrupt: { name: "ป้องกันทุจริต",        short: "ป้องกันฯ", color: "#78716c", teacher: "ครูกรภัทร์",     room: "5415" },
 };
 
-/** เวลาเรียนแต่ละคาบ (คาบ 0 = โฮมรูม, คาบ 4 ว่างทุกวัน) */
+/** เวลาเรียนแต่ละคาบ (คาบ 0 = โฮมรูม, คาบ 4 = พักกลางวัน) */
 export const PERIODS: Record<number, { start: string; end: string }> = {
   0:  { start: "08.00", end: "08.15" },
   1:  { start: "08.15", end: "09.05" },
@@ -59,36 +59,39 @@ export const PERIODS: Record<number, { start: string; end: string }> = {
   11: { start: "16.50", end: "17.40" },
 };
 
+/** คาบพักกลางวัน */
+export const LUNCH_PERIOD = 4;
+
 export const DAY_NAMES = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 export const DAY_SHORT = ["", "จ.", "อ.", "พ.", "พฤ.", "ศ.", ""];
 export const ALL_DAYS = [1, 2, 3, 4, 5] as const;
 
 /** ตารางเรียนจริง: day (1=จันทร์) → คาบ → วิชา */
 const TIMETABLE: Record<number, Record<number, SubjectId>> = {
-  // จันทร์
+  // จันทร์ — เลิก 15.10
   1: {
     0: "homeroom", 1: "trigono", 2: "trigono", 3: "geo",
-    5: "math", 6: "thai", 7: "englishls", 8: "scouts",
+    5: "math", 6: "chinese", 7: "englishls", 8: "scouts",
   },
-  // อังคาร
+  // อังคาร — เลิก 16.00
   2: {
     0: "homeroom", 1: "science", 2: "science", 3: "english",
     5: "geo", 6: "math", 7: "thai", 8: "career", 9: "career",
   },
-  // พุธ
+  // พุธ — เลิก 16.00
   3: {
     0: "homeroom", 1: "pisa", 2: "art", 3: "math",
     5: "guidance", 6: "scienceB", 7: "mathadv", 8: "thai", 9: "chinese",
   },
-  // พฤหัสบดี
+  // พฤหัสบดี — เลิก 16.50
   4: {
     0: "homeroom", 1: "club", 2: "buddhism", 3: "english",
     5: "compsci", 6: "compsci", 7: "englishlsB", 8: "health", 9: "math", 10: "volunteer",
   },
-  // ศุกร์
+  // ศุกร์ — เลิก 16.50
   5: {
     0: "homeroom", 1: "math", 2: "mathadv", 3: "history",
-    5: "chinese", 6: "mathproject", 7: "mathproject", 8: "art", 9: "pe", 10: "anticorrupt",
+    5: "thai", 6: "mathproject", 7: "mathproject", 8: "art", 9: "pe", 10: "anticorrupt",
   },
 };
 
