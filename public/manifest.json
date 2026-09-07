@@ -1,0 +1,19 @@
+{
+  "name": "HomeworkNote · ม.2/2",
+  "short_name": "HomeworkNote",
+  "description": "จดการบ้านง่าย ๆ ใช้ได้แม้ไม่มีเน็ต",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f7fb",
+  "theme_color": "#6366f1",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "จดการบ้านวันนี้", "url": "/homework", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "สร้างการ์ด", "url": "/export" }
+  ]
+}
