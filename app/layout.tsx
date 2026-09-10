@@ -32,10 +32,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th">
-      <body className={`${thai.className} bg-[#f6f7fb] antialiased`}>
+       <body className={`${thai.className} bg-[#f6f7fb] antialiased`}>
         <SyncProvider />
-        <OfflineBanner />
-        <div className="mx-auto min-h-screen max-w-md bg-[#f6f7fb] pb-24 shadow-xl">{children}</div>
+        <div className="mx-auto min-h-screen max-w-md bg-[#f6f7fb] pb-24 shadow-xl">
+          <OfflineBanner />
+          {children}
+        </div>
         <InstallPrompt />
         <BottomNav />
       </body>
