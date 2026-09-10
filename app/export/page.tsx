@@ -2,11 +2,10 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { toPng } from "html-to-image";
+import { toBlob } from "html-to-image";
 import { SUBJECTS, DAY_NAMES, getSubjectsForDay } from "@/data/schedule";
 import { loadAll, toDateKey, toThaiDate, type HomeworkEntry } from "@/lib/storage";
 
-/* ใช้ hex ล้วนในการ์ด — กัน canvas render สีเพี้ยน */
 const THEMES = {
   pink: { name: "ชมพูหวาน", bg: "linear-gradient(135deg,#fce7f3 0%,#fff1f2 45%,#e0f2fe 100%)", head: "#f9a8b4", row: "#fde8ec", accent: "#e11d48", emoji: "🐰" },
   blue: { name: "ฟ้าใส", bg: "linear-gradient(135deg,#e0f2fe 0%,#eff6ff 45%,#e0e7ff 100%)", head: "#93c5fd", row: "#e0f2fe", accent: "#2563eb", emoji: "🐳" },
@@ -32,6 +31,8 @@ function ExportInner() {
   const [theme, setTheme] = useState<ThemeKey>("pink");
   const [entries, setEntries] = useState<Record<string, HomeworkEntry>>({});
   const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [hint, setHint] = useState("");
 
   useEffect(() => {
     const refresh = () => setEntries(loadAll());
@@ -59,25 +60,99 @@ function ExportInner() {
   }, [dayIndex, dateKey, entries]);
 
   const t = THEMES[theme];
+  const fileName = `การบ้าน-${toThaiDate(dateKey).replace(/\//g, "-")}.png`;
 
-  const download = async () => {
-    if (!cardRef.current) return;
-    setBusy(true);
+  /** สร้างรูป — render ซ้ำหลายรอบกัน Safari ออกมาขาว */
+  const makeBlob = async (): Promise<Blob | null> => {
+    const node = cardRef.current;
+    if (!node) return null;
+
+    // รอฟอนต์ไทยโหลดเสร็จก่อน ไม่งั้นตัวหนังสือหาย
     try {
-      // render 2 รอบ กันฟอนต์ยังโหลดไม่เสร็จรอบแรก
-      await toPng(cardRef.current, { pixelRatio: 2, cacheBust: true });
-      const url = await toPng(cardRef.current, {
-        pixelRatio: 3,
-        cacheBust: true,
-        backgroundColor: "#ffffff",
-      });
+      await (document as any).fonts?.ready;
+    } catch {
+      /* ข้ามได้ */
+    }
+
+    const opts = {
+      pixelRatio: 2.5,
+      cacheBust: true,
+      backgroundColor: "#ffffff",
+      width: node.offsetWidth,
+      height: node.offsetHeight,
+    };
+
+    let blob: Blob | null = null;
+    for (let i = 0; i < 3; i++) {
+      blob = await toBlob(node, opts);
+      // รอบแรก Safari มักได้ไฟล์เล็กผิดปกติ (ยังไม่ทันวาด) → ลองใหม่
+      if (blob && blob.size > 20000) break;
+      await new Promise((r) => setTimeout(r, 350));
+    }
+    return blob;
+  };
+
+  const saveImage = async () => {
+    setBusy(true);
+    setHint("");
+    try {
+      const blob = await makeBlob();
+      if (!blob) throw new Error("empty");
+
+      const file = new File([blob], fileName, { type: "image/png" });
+
+      // 1) iPhone / iPad / Android รุ่นใหม่ → เปิดแชร์ชีต เลือก "บันทึกรูปภาพ"
+      const nav = navigator as Navigator & { canShare?: (d: unknown) => boolean };
+      if (nav.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: fileName });
+          setBusy(false);
+          return;
+        } catch (err) {
+          // ผู้ใช้กดยกเลิกเอง → ไม่ต้องทำอะไรต่อ
+          if (err instanceof Error && err.name === "AbortError") {
+            setBusy(false);
+            return;
+          }
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+
+      // 2) คอมพิวเตอร์ → ดาวน์โหลดตรง ๆ
       const a = document.createElement("a");
-      a.download = `การบ้าน-${dateKey}.png`;
-      a.href = url;
-      a.click();
+      if ("download" in a) {
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        setHint("บันทึกลงเครื่องแล้ว ✅");
+        setBusy(false);
+        return;
+      }
+
+      // 3) สำรองสุดท้าย → โชว์รูปให้กดค้างเพื่อเซฟ
+      setPreview(url);
     } catch (e) {
       console.error(e);
-      alert("สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้งนะครับ");
+      setHint("สร้างรูปไม่สำเร็จ ลองกดใหม่อีกครั้งนะครับ");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** ปุ่มสำรอง — เปิดรูปเป็นหน้าใหญ่ให้กดค้างบันทึก */
+  const showPreview = async () => {
+    setBusy(true);
+    setHint("");
+    try {
+      const blob = await makeBlob();
+      if (!blob) throw new Error("empty");
+      setPreview(URL.createObjectURL(blob));
+    } catch {
+      setHint("สร้างรูปไม่สำเร็จ ลองกดใหม่อีกครั้งนะครับ");
     } finally {
       setBusy(false);
     }
@@ -92,15 +167,15 @@ function ExportInner() {
       await navigator.clipboard.writeText(
         `📚 การบ้านวัน${DAY_NAMES[dayIndex]} ${toThaiDate(dateKey)}\n─────────────\n${txt}`
       );
-      alert("คัดลอกแล้ว ✅");
+      setHint("คัดลอกข้อความแล้ว ✅");
     } catch {
-      alert("คัดลอกไม่สำเร็จ ลองใช้ HTTPS นะครับ");
+      setHint("คัดลอกไม่สำเร็จ");
     }
   };
 
   return (
     <main className="pb-36">
-      <header className="rounded-b-3xl bg-gradient-to-br from-indigo-500 to-sky-400 px-5 pb-5 pt-11 text-white">
+      <header className="rounded-b-3xl bg-gradient-to-br from-indigo-500 to-sky-400 px-5 pb-5 pt-8 text-white">
         <h1 className="text-xl font-bold">สร้างการ์ดสรุป 🖼</h1>
         <p className="text-xs opacity-85">บันทึกเป็นรูป ส่งเข้ากลุ่มห้องได้เลย</p>
 
@@ -194,21 +269,58 @@ function ExportInner() {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-[68px] z-40 mx-auto flex max-w-md gap-2.5 border-t border-slate-100 bg-white/90 px-5 py-3 backdrop-blur-xl">
+      {hint && <p className="px-5 pt-3 text-center text-xs text-slate-500">{hint}</p>}
+
+      {/* ปุ่มล่าง */}
+      <div className="fixed inset-x-0 bottom-[68px] z-40 mx-auto max-w-md border-t border-slate-100 bg-white/95 px-5 py-3 backdrop-blur-xl">
+        <div className="flex gap-2.5">
+          <button
+            onClick={saveImage}
+            disabled={busy}
+            className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-500 to-sky-400 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-200 active:scale-[.98] disabled:opacity-60"
+          >
+            {busy ? "กำลังสร้าง…" : "📤 บันทึก / ส่งรูป"}
+          </button>
+          <button
+            onClick={copyText}
+            className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 active:scale-[.98]"
+          >
+            📋
+          </button>
+        </div>
         <button
-          onClick={download}
+          onClick={showPreview}
           disabled={busy}
-          className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-500 to-sky-400 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-200 active:scale-[.98] disabled:opacity-60"
+          className="mt-2 w-full text-center text-[11px] text-slate-400 underline disabled:opacity-50"
         >
-          {busy ? "กำลังสร้าง…" : "⬇️ ดาวน์โหลดรูป"}
-        </button>
-        <button
-          onClick={copyText}
-          className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 active:scale-[.98]"
-        >
-          📋
+          กดแล้วไม่มีอะไรเกิดขึ้น? แตะที่นี่เพื่อดูรูปแล้วกดค้างบันทึก
         </button>
       </div>
+
+      {/* หน้าพรีวิว — กดค้างที่รูปเพื่อบันทึก */}
+      {preview && (
+        <div className="fixed inset-0 z-[70] flex flex-col bg-black/90 p-4">
+          <div className="flex items-center justify-between pb-3 text-white">
+            <span className="text-sm font-semibold">กดค้างที่รูป → “บันทึกรูปภาพ”</span>
+            <button
+              onClick={() => {
+                URL.revokeObjectURL(preview);
+                setPreview(null);
+              }}
+              className="rounded-full bg-white/20 px-4 py-1.5 text-sm"
+            >
+              ปิด
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto rounded-2xl bg-white p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={preview} alt="การ์ดการบ้าน" className="w-full rounded-xl" />
+          </div>
+          <p className="pt-3 text-center text-xs text-white/70">
+            iPhone/iPad: กดค้างที่รูป แล้วเลือก “เพิ่มลงรูปภาพ”
+          </p>
+        </div>
+      )}
     </main>
   );
 }
