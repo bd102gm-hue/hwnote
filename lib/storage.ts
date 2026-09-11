@@ -19,6 +19,24 @@ export function saveAll(d: Record<string, HomeworkEntry>, changed?: HomeworkEntr
   window.dispatchEvent(new Event("hwnote:update"));
 }
 
+/** หา entry แบบยืดหยุ่น — กันกรณี id ไม่ตรงเพราะตารางเคยถูกแก้ */
+export function findEntry(
+  all: Record<string, HomeworkEntry>,
+  dateKey: string, slotKey: string, subjectId: string
+): HomeworkEntry | undefined {
+  const exact = all[`${dateKey}__${slotKey}`];
+  if (exact) return exact;
+
+  // slotKey = "day-period-subjectId" → จับคู่จาก วัน + คาบแรก
+  const [, period] = slotKey.split("-");
+  const byPeriod = Object.values(all).find(
+    (e) => e.date === dateKey && e.id.includes(`__${slotKey.split("-")[0]}-${period}-`)
+  );
+  if (byPeriod) return byPeriod;
+
+  return Object.values(all).find((e) => e.date === dateKey && e.subjectId === subjectId);
+}
+
 export function toDateKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
@@ -40,16 +58,25 @@ export function dueLabel(due: string, today: string) {
   return { text: toThaiShort(due), tone: "later" as const };
 }
 
-export type Buckets = { overdue: HomeworkEntry[]; tomorrow: HomeworkEntry[]; week: HomeworkEntry[]; doneCount: number; total: number };
+export type Buckets = {
+  overdue: HomeworkEntry[]; urgent: HomeworkEntry[]; week: HomeworkEntry[];
+  noDue: HomeworkEntry[]; doneCount: number; total: number;
+};
+
+const real = (e: HomeworkEntry) => {
+  const h = e.homework?.trim();
+  return Boolean(h && h !== "-" && h !== "−");
+};
 
 export function bucketize(entries: Record<string, HomeworkEntry>, today: string): Buckets {
-  const list = Object.values(entries).filter((e) => e.homework?.trim() && e.homework.trim() !== "-");
-  const act = list.filter((e) => !e.done && e.dueDate);
-  const s = (a: HomeworkEntry, b: HomeworkEntry) => a.dueDate.localeCompare(b.dueDate);
+  const list = Object.values(entries).filter(real);
+  const act = list.filter((e) => !e.done);
+  const s = (a: HomeworkEntry, b: HomeworkEntry) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999");
   return {
-    overdue: act.filter((e) => daysBetween(today, e.dueDate) < 0).sort(s),
-    tomorrow: act.filter((e) => [0,1].includes(daysBetween(today, e.dueDate))).sort(s),
-    week: act.filter((e) => { const d = daysBetween(today, e.dueDate); return d > 1 && d <= 7; }).sort(s),
+    overdue: act.filter((e) => e.dueDate && daysBetween(today, e.dueDate) < 0).sort(s),
+    urgent: act.filter((e) => e.dueDate && [0, 1].includes(daysBetween(today, e.dueDate))).sort(s),
+    week: act.filter((e) => { if (!e.dueDate) return false; const d = daysBetween(today, e.dueDate); return d > 1 && d <= 7; }).sort(s),
+    noDue: act.filter((e) => !e.dueDate).sort((a, b) => b.date.localeCompare(a.date)),
     doneCount: list.filter((e) => e.done).length,
     total: list.length,
   };
