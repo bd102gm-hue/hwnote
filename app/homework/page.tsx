@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SUBJECTS, DAY_NAMES, getSubjectsForDay, getDuty, type DaySlot } from "@/data/schedule";
-import { loadAll, saveAll, toDateKey, toThaiDate, type HomeworkEntry } from "@/lib/storage";
+import { loadAll, saveAll, findEntry, toDateKey, toThaiDate, type HomeworkEntry } from "@/lib/storage";
 import { cachedMe } from "@/lib/auth";
 
 export default function HomeworkPage() {
@@ -34,14 +34,18 @@ function Inner() {
   const duty = getDuty(dayIndex);
   const me = cachedMe();
 
-  const entryOf = (slot: DaySlot): HomeworkEntry => {
+   const entryOf = (slot: DaySlot): HomeworkEntry => {
     const id = `${dateKey}__${slot.key}`;
-    return entries[id] ?? { id, date: dateKey, subjectId: slot.subjectId, classwork: "", homework: "", dueDate: "", done: false, updatedAt: 0 };
+    const found = findEntry(entries, dateKey, slot.key, slot.subjectId);
+    if (found) return found;
+    return { id, date: dateKey, subjectId: slot.subjectId, classwork: "", homework: "", dueDate: "", done: false, updatedAt: 0 };
+  };
+
   };
 
   const update = (slot: DaySlot, patch: Partial<HomeworkEntry>) => {
     const cur = entryOf(slot);
-    const updated = { ...cur, ...patch, updatedAt: Date.now(), updatedBy: me?.nickname ?? "" };
+    const updated = { ...cur, ...patch, updatedAt: Date.now(), updatedBy: me?.nickname ?? "นักเรียน" };
     const next = { ...entries, [cur.id]: updated };
     setEntries(next);
     saveAll(next, updated);
@@ -65,7 +69,7 @@ function Inner() {
       lines.push(`   การบ้าน: ${e.homework || "-"}`);
       if (e.dueDate) lines.push(`   ⏰ ส่ง ${toThaiDate(e.dueDate)}`);
     });
-    if (duty) lines.push(`\n👤 จดโดย: ${duty}`);
+    if (duty) lines.push(`\n👤 เวรวันนี้: ${duty}`);
     try { await navigator.clipboard.writeText(lines.join("\n")); alert("คัดลอกแล้ว ✅"); }
     catch { alert("คัดลอกไม่สำเร็จ"); }
   };
@@ -136,12 +140,10 @@ function Inner() {
                 <div className="space-y-3 border-t border-slate-100 bg-slate-50/70 p-4">
                   <Field label="งานในห้อง" emoji="📖">
                     <textarea rows={2} value={e.classwork} onChange={(ev) => update(slot, { classwork: ev.target.value })}
-                      placeholder="เช่น ทำแบบฝึกหัดหน้า 13-15"
                       className="w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:border-indigo-400" />
                   </Field>
                   <Field label="การบ้าน" emoji="📝">
                     <textarea rows={2} value={e.homework} onChange={(ev) => update(slot, { homework: ev.target.value })}
-                      placeholder="ใส่ - ถ้าไม่มี"
                       className="w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:border-indigo-400" />
                   </Field>
                   <div className="flex items-end gap-3">
