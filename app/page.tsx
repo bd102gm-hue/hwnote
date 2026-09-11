@@ -1,191 +1,175 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { SUBJECTS, DAY_NAMES } from "@/data/schedule";
-import {
-  loadAll, saveAll, toDateKey, toThaiShort, bucketize, dueLabel,
-  type HomeworkEntry,
-} from "@/lib/storage";
+import { useEffect, useState } from "react";
+import { SUBJECTS, DAY_NAMES, getSubjectsForDay, getDuty, roomName, getYear } from "@/data/schedule";
+import { loadAll, bucketize, toDateKey, toThaiDate, toThaiShort, dueLabel, type Buckets, type HomeworkEntry } from "@/lib/storage";
+import { cachedMe } from "@/lib/auth";
+import { askPermission, notifyState } from "@/lib/notify";
 
-const TONE: Record<string, string> = {
-  overdue: "bg-rose-50 text-rose-600 border-rose-200",
-  today: "bg-orange-50 text-orange-600 border-orange-200",
-  tomorrow: "bg-amber-50 text-amber-600 border-amber-200",
-  week: "bg-sky-50 text-sky-600 border-sky-200",
-  later: "bg-slate-50 text-slate-500 border-slate-200",
-};
-
-export default function Dashboard() {
-  const [entries, setEntries] = useState<Record<string, HomeworkEntry>>({});
+export default function HomePage() {
   const [today, setToday] = useState("");
-  const [dayIdx, setDayIdx] = useState(0);
+  const [b, setB] = useState<Buckets | null>(null);
+  const [perm, setPerm] = useState<string>("default");
 
   useEffect(() => {
-    const now = new Date();
-    setToday(toDateKey(now));
-    setDayIdx(now.getDay());
-
-    const refresh = () => setEntries(loadAll());
+    const t = toDateKey(new Date());
+    setToday(t);
+    setPerm(notifyState());
+    const refresh = () => setB(bucketize(loadAll(), t));
     refresh();
     window.addEventListener("hwnote:update", refresh);
     return () => window.removeEventListener("hwnote:update", refresh);
   }, []);
 
-  const b = useMemo(() => bucketize(entries, today || toDateKey(new Date())), [entries, today]);
-  const pct = b.total ? Math.round((b.doneCount / b.total) * 100) : 0;
+  if (!today || !b) return <div className="p-16 text-center text-sm text-slate-400">กำลังโหลด…</div>;
 
-  const toggle = (e: HomeworkEntry) => {
-    const updated = { ...e, done: !e.done, updatedAt: Date.now() };
-    const next = { ...entries, [e.id]: updated };
-    setEntries(next);
-    saveAll(next, updated); // ← ส่ง changed เพื่อให้ซิงก์
-  };
+  const dow = new Date().getDay();
+  const slots = getSubjectsForDay(dow);
+  const me = cachedMe();
+  const duty = getDuty(dow);
+  const urgentCount = b.overdue.length + b.urgent.length;
 
   return (
     <main>
-      {/* ---------- Hero ---------- */}
-      <header className="relative overflow-hidden rounded-b-[32px] bg-gradient-to-br from-indigo-500 via-indigo-400 to-sky-400 px-5 pb-8 pt-12 text-white">
-        <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
-        <div className="absolute -bottom-10 left-10 h-24 w-24 rounded-full bg-white/10" />
-
-        <p className="text-sm opacity-90">สวัสดี 👋</p>
-        <h1 className="text-2xl font-bold">ห้อง ม.2/2</h1>
-        <p className="mt-0.5 text-xs opacity-80">
-          {today ? `วัน${DAY_NAMES[dayIdx]} · ${toThaiShort(today)}` : "\u00A0"}
+      <header className="rounded-b-3xl bg-gradient-to-br from-indigo-500 to-sky-400 px-5 pb-6 pt-8 text-white">
+        <p className="text-xs opacity-85">{roomName(getYear())}</p>
+        <h1 className="text-xl font-bold">สวัสดี {me?.nickname ?? ""} 👋</h1>
+        <p className="mt-1 text-xs opacity-85">
+          วัน{DAY_NAMES[dow]} · {toThaiDate(today)}{duty && ` · เวรจด: ${duty}`}
         </p>
 
-        <div className="mt-6 flex items-center gap-4 rounded-2xl bg-white/15 p-4 backdrop-blur-sm">
-          <Ring pct={pct} />
-          <div>
-            <div className="text-lg font-bold">
-              {b.doneCount}/{b.total} ชิ้น
-            </div>
-            <div className="text-xs opacity-85">
-              {b.total === 0 ? "ยังไม่มีการบ้าน" : pct === 100 ? "เคลียร์หมดแล้ว เก่งมาก! 🎉" : "ทำต่ออีกนิดนะ สู้ ๆ 💪"}
-            </div>
-          </div>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+          <Stat n={b.overdue.length} label="เลยกำหนด" />
+          <Stat n={b.urgent.length} label="วันนี้/พรุ่งนี้" />
+          <Stat n={b.week.length} label="สัปดาห์นี้" />
         </div>
       </header>
 
-      {/* ---------- Stat cards ---------- */}
-      <section className="-mt-5 grid grid-cols-3 gap-2.5 px-5">
-        <Stat n={b.overdue.length} label="เลยกำหนด" emoji="⚠️" tone="rose" />
-        <Stat n={b.tomorrow.length} label="ใกล้ถึงกำหนด" emoji="⏰" tone="amber" />
-        <Stat n={b.week.length} label="สัปดาห์นี้" emoji="📚" tone="sky" />
-      </section>
+      <div className="space-y-4 px-5 py-5">
+        {/* เปิดแจ้งเตือน */}
+        {perm === "default" && (
+          <button
+            onClick={async () => setPerm(String(await askPermission()))}
+            className="card flex w-full items-center gap-3 p-4 text-left active:bg-slate-50"
+          >
+            <span className="text-xl">🔔</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-slate-800">เปิดแจ้งเตือนงานใกล้ส่ง</p>
+              <p className="text-[11px] text-slate-400">เตือนอัตโนมัติเมื่อใกล้ถึงกำหนด</p>
+            </div>
+            <span className="rounded-full bg-indigo-500 px-3 py-1 text-[11px] font-semibold text-white">เปิด</span>
+          </button>
+        )}
 
-      {/* ---------- Lists ---------- */}
-      <section className="space-y-6 px-5 py-6">
-        <Group title="ต้องรีบ!" emoji="⚠️" items={b.overdue} today={today} onToggle={toggle} />
-        <Group title="ใกล้ถึงกำหนด" emoji="⏰" items={b.tomorrow} today={today} onToggle={toggle} />
-        <Group title="สัปดาห์นี้" emoji="📅" items={b.week} today={today} onToggle={toggle} />
+        {urgentCount > 0 && (
+          <div className="rounded-2xl bg-gradient-to-r from-rose-500 to-orange-400 p-4 text-white shadow-lg shadow-rose-100">
+            <p className="text-sm font-bold">⏰ มีงานต้องส่ง {urgentCount} ชิ้น</p>
+            <p className="mt-0.5 text-[11px] opacity-90">
+              {b.overdue.length > 0 && `เลยกำหนด ${b.overdue.length} · `}ใกล้ถึงกำหนดแล้ว
+            </p>
+          </div>
+        )}
+
+        <Section title="🔥 เลยกำหนดส่ง" items={b.overdue} today={today} tone="rose" />
+        <Section title="⏰ ส่งวันนี้ / พรุ่งนี้" items={b.urgent} today={today} tone="amber" />
+        <Section title="📅 ภายในสัปดาห์นี้" items={b.week} today={today} tone="sky" />
+        <Section title="📝 ยังไม่ระบุกำหนดส่ง" items={b.noDue} today={today} tone="slate" />
 
         {b.total === 0 && (
           <div className="card p-10 text-center">
-            <div className="text-4xl">🌤️</div>
-            <p className="mt-3 font-semibold text-slate-700">ยังไม่มีการบ้าน</p>
-            <p className="mt-1 text-sm text-slate-400">แตะปุ่ม + เพื่อเริ่มจดวันนี้</p>
+            <div className="text-4xl">🎉</div>
+            <p className="mt-3 font-semibold text-slate-700">ยังไม่มีการบ้านในระบบ</p>
+            <p className="mt-1 text-xs text-slate-400">กดแท็บ “จด” เพื่อเริ่มบันทึก</p>
           </div>
         )}
-      </section>
 
-      {/* ---------- FAB (ไม่ล้นขอบจอเล็ก) ---------- */}
-      <Link
-        href="/homework"
-        aria-label="จดการบ้าน"
-        className="fixed bottom-24 right-[max(1.25rem,calc(50vw-13rem))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-sky-400 text-2xl text-white shadow-lg shadow-indigo-300 active:scale-95"
-      >
-        +
-      </Link>
+        {b.total > 0 && urgentCount === 0 && b.week.length === 0 && b.noDue.length === 0 && (
+          <div className="card p-10 text-center">
+            <div className="text-4xl">✨</div>
+            <p className="mt-3 font-semibold text-slate-700">เคลียร์งานหมดแล้ว!</p>
+            <p className="mt-1 text-xs text-slate-400">ทำเสร็จ {b.doneCount}/{b.total} ชิ้น</p>
+          </div>
+        )}
+
+        {/* คาบวันนี้ */}
+        {slots.length > 0 && (
+          <div className="card overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5">
+              <span className="text-sm font-bold text-slate-700">📚 คาบเรียนวันนี้</span>
+              <Link href="/homework" className="text-[11px] text-indigo-500">จดการบ้าน ›</Link>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {slots.filter((s) => !s.periods.includes(0)).map((s) => {
+                const subj = SUBJECTS[s.subjectId];
+                if (!subj) return null;
+                return (
+                  <div key={s.key} className="flex items-center gap-3 px-4 py-2">
+                    <span className="w-11 text-[10px] text-slate-400">{s.timeLabel.split("–")[0]}</span>
+                    <span className="h-6 w-1 rounded-full" style={{ background: subj.color }} />
+                    <span className="flex-1 truncate text-sm text-slate-700">{subj.name}</span>
+                    <span className="text-[10px] text-slate-300">{subj.room}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
     </main>
   );
 }
 
-/* ---------------- sub components ---------------- */
-
-function Ring({ pct }: { pct: number }) {
-  const r = 26;
-  const c = 2 * Math.PI * r;
+function Stat({ n, label }: { n: number; label: string }) {
   return (
-    <svg width="68" height="68" viewBox="0 0 68 68" className="-rotate-90 shrink-0">
-      <circle cx="34" cy="34" r={r} strokeWidth="7" stroke="rgba(255,255,255,.3)" fill="none" />
-      <circle
-        cx="34" cy="34" r={r} strokeWidth="7" stroke="white" fill="none"
-        strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c - (c * pct) / 100}
-        className="transition-all duration-700"
-      />
-      <text
-        x="34" y="34" transform="rotate(90 34 34)" textAnchor="middle" dominantBaseline="central"
-        className="fill-white text-[15px] font-bold"
-      >
-        {pct}%
-      </text>
-    </svg>
-  );
-}
-
-function Stat({ n, label, emoji, tone }: { n: number; label: string; emoji: string; tone: string }) {
-  const color: Record<string, string> = {
-    rose: "text-rose-500",
-    amber: "text-amber-500",
-    sky: "text-sky-500",
-  };
-  return (
-    <div className="card flex flex-col items-center gap-0.5 px-2 py-3.5">
-      <span className="text-base">{emoji}</span>
-      <span className={`text-2xl font-bold ${color[tone]}`}>{n}</span>
-      <span className="text-center text-[10px] font-medium leading-tight text-slate-500">{label}</span>
+    <div className="rounded-2xl bg-white/20 py-2">
+      <div className="text-lg font-bold">{n}</div>
+      <div className="text-[10px] opacity-85">{label}</div>
     </div>
   );
 }
 
-function Group({
-  title, emoji, items, today, onToggle,
-}: {
-  title: string;
-  emoji: string;
-  items: HomeworkEntry[];
-  today: string;
-  onToggle: (e: HomeworkEntry) => void;
+const TONE = {
+  rose: "border-rose-200 bg-rose-50 text-rose-600",
+  amber: "border-amber-200 bg-amber-50 text-amber-700",
+  sky: "border-sky-200 bg-sky-50 text-sky-700",
+  slate: "border-slate-200 bg-slate-50 text-slate-600",
+};
+
+function Section({ title, items, today, tone }: {
+  title: string; items: HomeworkEntry[]; today: string; tone: keyof typeof TONE;
 }) {
   if (!items.length) return null;
   return (
-    <div>
-      <h2 className="mb-2.5 flex items-center gap-1.5 px-1 text-sm font-bold text-slate-700">
-        <span>{emoji}</span>
-        {title}
-        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-600">{items.length}</span>
-      </h2>
+    <section>
+      <h2 className="mb-2 text-xs font-bold text-slate-600">{title} ({items.length})</h2>
       <div className="space-y-2">
         {items.map((e) => {
-          const s = SUBJECTS[e.subjectId];
-          const d = dueLabel(e.dueDate, today);
+          const subj = SUBJECTS[e.subjectId];
+          const lb = e.dueDate ? dueLabel(e.dueDate, today) : null;
           return (
-            <div key={e.id} className="card flex items-start gap-3 p-3.5">
-              <span className="mt-1 h-9 w-1.5 shrink-0 rounded-full" style={{ background: s?.color ?? "#cbd5e1" }} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-semibold text-slate-800">{s?.name ?? e.subjectId}</span>
-                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${TONE[d.tone]}`}>
-                    {d.text}
-                  </span>
+            <Link key={e.id} href={`/homework?d=${e.date}`} className="card block p-3.5 active:bg-slate-50">
+              <div className="flex items-start gap-2.5">
+                <span className="mt-1 h-8 w-1 shrink-0 rounded-full" style={{ background: subj?.color ?? "#cbd5e1" }} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-sm font-semibold text-slate-800">{subj?.name ?? "วิชา"}</span>
+                    {lb && (
+                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-semibold ${TONE[tone]}`}>
+                        {lb.text}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">📝 {e.homework}</p>
+                  <p className="mt-1 text-[10px] text-slate-400">
+                    จดวัน {toThaiShort(e.date)}{e.updatedBy && ` · 👤 ${e.updatedBy}`}
+                  </p>
                 </div>
-                <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-slate-500">{e.homework}</p>
               </div>
-              <button
-                onClick={() => onToggle(e)}
-                aria-label="ทำเสร็จแล้ว"
-                className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition ${
-                  e.done ? "border-emerald-400 bg-emerald-400 text-white" : "border-slate-300"
-                }`}
-              >
-                {e.done && <span className="text-xs">✓</span>}
-              </button>
-            </div>
+            </Link>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }
