@@ -3,8 +3,8 @@ import { Noto_Sans_Thai } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
 import OfflineBanner from "@/components/OfflineBanner";
 import InstallPrompt from "@/components/InstallPrompt";
-import SyncProvider from "@/components/SyncProvider";
 import AuthGate from "@/components/AuthGate";
+import DataGate from "@/components/DataGate";
 import "./globals.css";
 
 const thai = Noto_Sans_Thai({ subsets: ["thai", "latin"], weight: ["400","500","600","700","800"], display: "swap" });
@@ -28,11 +28,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${thai.className} bg-[#f6f7fb] antialiased`}>
         <div className="mx-auto min-h-screen max-w-md bg-[#f6f7fb] shadow-xl">
           <AuthGate>
-            <SyncProvider />
-            <OfflineBanner />
-            <div className="pb-24">{children}</div>
-            <InstallPrompt />
-            <BottomNav />
+            <DataGate>
+              <OfflineBanner />
+              <div className="pb-24">{children}</div>
+              <InstallPrompt />
+              <BottomNav />
+            </DataGate>
           </AuthGate>
         </div>
       </body>
