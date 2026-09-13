@@ -120,32 +120,30 @@ export function subscribeAll() {
 /* ---------------- ตารางเรียน ---------------- */
 /** โหลด "ปีล่าสุดบนเซิร์ฟเวอร์" เป็นหลักเสมอ — ทุกเครื่องจะตรงกัน */
 export async function bootstrapSchedule() {
-  if (!hasSupabase()) return;
+  const me = cachedMe();
+  if (!hasSupabase() || !me?.roomId) return;
   try {
-    const { data } = await sb()
-      .from("schedules").select("year,config")
+    const { data } = await sb().from("schedules")
+      .select("year,config").eq("room_id", me.roomId)
       .order("year", { ascending: false }).limit(1).maybeSingle();
 
     if (data?.config) {
       applyConfig({ ...(data.config as ScheduleConfig), year: data.year as number });
       return;
     }
-    // ยังไม่มีตารางเลย → ให้ admin เท่านั้นที่สร้างครั้งแรก
-    const me = cachedMe();
-    if (me?.isAdmin) {
-      const cfg = defaultConfig(currentAcademicYear());
-      await saveSchedule(cfg);
-    } else {
-      applyConfig(defaultConfig(currentAcademicYear()), false);
-    }
+    const cfg = defaultConfig(currentAcademicYear());
+    if (me.isAdmin) await saveSchedule(cfg);
+    else applyConfig(cfg, false);
   } catch (e) { console.warn("[schedule]", e); }
 }
 
 export async function fetchSchedule(year?: number) {
-  if (!hasSupabase()) return;
+  const me = cachedMe();
+  if (!hasSupabase() || !me?.roomId) return;
   if (year === undefined) return bootstrapSchedule();
   try {
-    const { data } = await sb().from("schedules").select("*").eq("year", year).maybeSingle();
+    const { data } = await sb().from("schedules").select("*")
+      .eq("room_id", me.roomId).eq("year", year).maybeSingle();
     if (data?.config) applyConfig({ ...(data.config as ScheduleConfig), year });
     else applyConfig(defaultConfig(year), false);
   } catch (e) { console.warn("[schedule]", e); }
@@ -153,22 +151,23 @@ export async function fetchSchedule(year?: number) {
 
 export async function saveSchedule(cfg: ScheduleConfig) {
   const me = cachedMe();
-  if (!hasSupabase() || !me) throw new Error("ต้องล็อกอินก่อน");
+  if (!hasSupabase() || !me?.roomId) throw new Error("ยังไม่มีห้อง");
   if (!me.isAdmin) throw new Error("เฉพาะผู้ดูแลเท่านั้นที่แก้ตารางได้");
   const { error } = await sb().from("schedules").upsert(
-    { year: cfg.year, config: cfg, updated_at: new Date().toISOString(), updated_by: me.nickname },
-    { onConflict: "year" });
+    { room_id: me.roomId, year: cfg.year, config: cfg, updated_at: new Date().toISOString(), updated_by: me.nickname },
+    { onConflict: "room_id,year" });
   if (error) throw new Error(error.message);
   applyConfig(cfg);
 }
 
 export async function listYears(): Promise<number[]> {
-  if (!hasSupabase()) return [getYear()];
-  const { data } = await sb().from("schedules").select("year").order("year", { ascending: false });
+  const me = cachedMe();
+  if (!hasSupabase() || !me?.roomId) return [getYear()];
+  const { data } = await sb().from("schedules").select("year")
+    .eq("room_id", me.roomId).order("year", { ascending: false });
   const ys = (data ?? []).map((r) => r.year as number);
   return ys.length ? ys : [getYear()];
 }
-
 /** เรียกตอนเปิดแอป — โหลดตารางก่อน แล้วค่อยดึงการบ้าน */
 export async function bootstrapAll() {
   await bootstrapSchedule();
