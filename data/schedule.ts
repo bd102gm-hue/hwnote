@@ -101,6 +101,7 @@ export function roomName(year?: number) {
   return _cfg.roomName?.trim() || `GM02-${year ?? _cfg.year}`;
 }
 
+
 export type DaySlot = { key: string; subjectId: string; periods: number[]; timeLabel: string };
 
 function same(a: string, b: string) {
