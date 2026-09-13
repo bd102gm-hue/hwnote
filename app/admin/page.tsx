@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cachedMe, loadMe } from "@/lib/auth";
+import { cachedMe, loadMe, updateRoom } from "@/lib/auth";
 import { fetchSchedule, saveSchedule, listYears } from "@/lib/sync";
 import { getConfig, DAY_NAMES, ALL_DAYS, PERIODS, type ScheduleConfig } from "@/data/schedule";
 
