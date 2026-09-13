@@ -9,6 +9,13 @@ export default function AdminPage() {
   const [cfg, setCfg] = useState<ScheduleConfig>(getConfig());
   const [isAdmin, setIsAdmin] = useState(false);
   const [msg, setMsg] = useState("");
+    const [school, setSchool] = useState("");
+  const [cls, setCls] = useState("");
+
+  useEffect(() => {
+    const m = cachedMe();
+    if (m) { setSchool(m.school); setCls(m.className); }
+  }, [ok]);
 
   useEffect(() => {
     loadMe().then(m => setIsAdmin(!!m?.isAdmin));
@@ -30,11 +37,46 @@ export default function AdminPage() {
     <main className="p-5 pb-24">
       <h1 className="text-xl font-bold mb-4">🛠 จัดการห้องเรียน</h1>
       
-      {/* แก้ชื่อห้อง */}
-      <div className="card p-4 mb-4">
-        <label className="text-xs font-bold text-slate-500">ชื่อห้อง (เช่น ม.2/2)</label>
-        <input value={cfg.roomName || ""} onChange={e => setCfg({...cfg, roomName: e.target.value})} className="w-full border p-2 rounded-lg mt-1" />
-      </div>
+           {tab === "room" && (
+        <div className="space-y-3 px-5">
+          <div className="card space-y-3 p-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">🏫 ชื่อโรงเรียน</label>
+              <input value={school} onChange={(e) => setSchool(e.target.value)} placeholder="เช่น โรงเรียนสวนกุหลาบ"
+                className="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">🎓 ชื่อชั้น / ห้อง</label>
+              <input value={cls} onChange={(e) => setCls(e.target.value)} placeholder="เช่น ม.2/2"
+                className="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400" />
+            </div>
+            <button onClick={async () => {
+              setBusy(true); setMsg("");
+              try { await updateRoom(school, cls); setMsg("บันทึกชื่อห้องแล้ว ✅"); }
+              catch (e) { setMsg("❌ " + (e instanceof Error ? e.message : "ผิดพลาด")); }
+              finally { setBusy(false); }
+            }} disabled={busy || !cls.trim()}
+              className="w-full rounded-xl bg-slate-800 py-2.5 text-sm font-semibold text-white disabled:opacity-40">
+              บันทึกชื่อห้อง
+            </button>
+            <p className="text-[11px] text-slate-400">แสดงบนหน้าแรก หน้าตั้งค่า และบนการ์ดสรุป</p>
+          </div>
+
+          <div className="card p-4">
+            <p className="mb-1 text-sm font-semibold text-slate-800">📤 ส่งตารางให้ห้องอื่น</p>
+            <p className="mb-2 text-[11px] text-slate-400">คัดลอกแล้วส่งให้เพื่อนต่างห้อง/ต่างโรงเรียนนำไปวาง</p>
+            <button onClick={exportCfg} className="w-full rounded-xl bg-slate-800 py-2.5 text-sm font-semibold text-white">คัดลอกตารางทั้งชุด</button>
+          </div>
+
+          <div className="card p-4">
+            <p className="mb-1 text-sm font-semibold text-slate-800">📥 นำเข้าตารางจากห้องอื่น</p>
+            <textarea rows={3} value={imp} onChange={(e) => setImp(e.target.value)} placeholder="วางข้อความที่ได้รับมาที่นี่"
+              className="mt-1 w-full resize-none rounded-xl border border-slate-200 p-2.5 text-[11px] outline-none focus:border-indigo-400" />
+            <button onClick={importCfg} disabled={!imp.trim()}
+              className="mt-2 w-full rounded-xl bg-indigo-500 py-2.5 text-sm font-semibold text-white disabled:opacity-40">นำเข้า</button>
+          </div>
+        </div>
+      )}
 
       {/* ตั้งเวร */}
       <div className="card p-4 mb-4">
