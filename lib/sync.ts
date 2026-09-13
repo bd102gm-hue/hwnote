@@ -44,10 +44,11 @@ export async function syncNow() {
 
   syncing = true; emit("syncing");
   try {
-    const c = sb(), year = getYear();
+        const c = sb(), year = getYear(), roomId = me.roomId;
+    if (!roomId) return;
     const { error } = await c.from("homework").upsert(
       jobs.map((j) => ({
-        id: j.entry.id, year, date: j.entry.date, subject_id: j.entry.subjectId,
+        id: j.entry.id, room_id: roomId, year, date: j.entry.date, subject_id: j.entry.subjectId,
         classwork: j.entry.classwork, homework: j.entry.homework,
         due_date: j.entry.dueDate || null,
         updated_at: new Date(j.entry.updatedAt || Date.now()).toISOString(),
