@@ -29,8 +29,7 @@ export async function signUp(username: string, nickname: string, password: strin
   if (!data.user) throw new Error("สมัครไม่สำเร็จ");
 
   const { error: e2 } = await sb().from("profiles").insert({
-    id: data.user.id,
-    username: u,
+    id: data.user.id, username: u,
     nickname: nickname.trim() || u,
     is_admin: adminCode.trim() === ADMIN_CODE,
   });
@@ -50,12 +49,25 @@ export async function signOut() {
   if (typeof window !== "undefined") {
     localStorage.removeItem("hwnote:entries:v1");
     localStorage.removeItem("hwnote:outbox:v1");
+    localStorage.removeItem("hwnote:schedule:v3");
   }
 }
 
 export async function updateNickname(nickname: string) {
   if (!_me) return;
-  await sb().from("profiles").update({ nickname: nickname.trim() }).eq("id", _me.id);
+  const { error } = await sb().from("profiles").update({ nickname: nickname.trim() }).eq("id", _me.id);
+  if (error) throw new Error(error.message);
   _me = { ..._me, nickname: nickname.trim() };
   window.dispatchEvent(new Event("hwnote:update"));
+}
+
+/** ปลดล็อกสิทธิ์ผู้ดูแลด้วยรหัส (ไม่ต้องสมัครใหม่) */
+export async function promoteToAdmin(code: string) {
+  if (!_me) throw new Error("ยังไม่ได้ล็อกอิน");
+  if (code.trim() !== ADMIN_CODE) throw new Error("รหัสผู้ดูแลไม่ถูกต้อง");
+  const { error } = await sb().from("profiles").update({ is_admin: true }).eq("id", _me.id);
+  if (error) throw new Error(error.message);
+  _me = { ..._me, isAdmin: true };
+  window.dispatchEvent(new Event("hwnote:update"));
+  return _me;
 }
