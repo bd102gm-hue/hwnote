@@ -2,6 +2,7 @@ export type Subject = { name: string; short: string; color: string; teacher?: st
 export type Timetable = Record<string, Record<string, string>>;
 export type ScheduleConfig = {
   year: number;
+  roomName?: string;
   subjects: Record<string, Subject>;
   timetable: Timetable;
   duty: Record<string, string>;
@@ -17,14 +18,10 @@ export const LUNCH_PERIOD = 4;
 export const DAY_NAMES = ["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
 export const ALL_DAYS = [1, 2, 3, 4, 5] as const;
 
-/** พ.ศ. ของปีการศึกษา (ขึ้นปีใหม่เดือน เม.ย.) */
 export function currentAcademicYear() {
   const d = new Date();
   const be = d.getFullYear() + 543;
   return d.getMonth() < 3 ? be - 1 : be;
-}
-export function roomName(year: number) {
-  return `GM02-${year}`;
 }
 
 const DEFAULT_SUBJECTS: Record<string, Subject> = {
@@ -57,24 +54,24 @@ const DEFAULT_SUBJECTS: Record<string, Subject> = {
 };
 
 const DEFAULT_TIMETABLE: Timetable = {
-  "1":{0:"homeroom",1:"trigono",2:"trigono",3:"geo",5:"math",6:"chinese",7:"englishls",8:"scouts"} as any,
-  "2":{0:"homeroom",1:"science",2:"science",3:"english",5:"geo",6:"math",7:"thai",8:"career",9:"career"} as any,
-  "3":{0:"homeroom",1:"pisa",2:"art",3:"math",5:"guidance",6:"scienceB",7:"mathadv",8:"thai",9:"chinese"} as any,
-  "4":{0:"homeroom",1:"club",2:"buddhism",3:"english",5:"compsci",6:"compsci",7:"englishlsB",8:"health",9:"math",10:"volunteer"} as any,
-  "5":{0:"homeroom",1:"math",2:"mathadv",3:"history",5:"thai",6:"mathproject",7:"mathproject",8:"art",9:"pe",10:"anticorrupt"} as any,
+  "1":{"0":"homeroom","1":"trigono","2":"trigono","3":"geo","5":"math","6":"chinese","7":"englishls","8":"scouts"},
+  "2":{"0":"homeroom","1":"science","2":"science","3":"english","5":"geo","6":"math","7":"thai","8":"career","9":"career"},
+  "3":{"0":"homeroom","1":"pisa","2":"art","3":"math","5":"guidance","6":"scienceB","7":"mathadv","8":"thai","9":"chinese"},
+  "4":{"0":"homeroom","1":"club","2":"buddhism","3":"english","5":"compsci","6":"compsci","7":"englishlsB","8":"health","9":"math","10":"volunteer"},
+  "5":{"0":"homeroom","1":"math","2":"mathadv","3":"history","5":"thai","6":"mathproject","7":"mathproject","8":"art","9":"pe","10":"anticorrupt"},
 };
 
 export function defaultConfig(year = currentAcademicYear()): ScheduleConfig {
   return {
     year,
+    roomName: `GM02-${year}`,
     subjects: JSON.parse(JSON.stringify(DEFAULT_SUBJECTS)),
     timetable: JSON.parse(JSON.stringify(DEFAULT_TIMETABLE)),
     duty: { "1": "", "2": "", "3": "", "4": "", "5": "" },
   };
 }
 
-/* ---------- state (แก้ได้ตอนรัน) ---------- */
-const KEY = "hwnote:schedule:v2";
+const KEY = "hwnote:schedule:v3";
 
 export const SUBJECTS: Record<string, Subject> = {};
 let _cfg: ScheduleConfig = defaultConfig();
@@ -82,20 +79,15 @@ let _cfg: ScheduleConfig = defaultConfig();
 function hydrate(cfg: ScheduleConfig) {
   _cfg = cfg;
   Object.keys(SUBJECTS).forEach((k) => delete SUBJECTS[k]);
-  Object.assign(SUBJECTS, cfg.subjects);
+  Object.assign(SUBJECTS, cfg.subjects || {});
 }
 hydrate(defaultConfig());
 
 if (typeof window !== "undefined") {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) hydrate(JSON.parse(raw));
-  } catch {}
+  try { const raw = localStorage.getItem(KEY); if (raw) hydrate(JSON.parse(raw)); } catch {}
 }
 
-export function getConfig(): ScheduleConfig {
-  return JSON.parse(JSON.stringify(_cfg));
-}
+export function getConfig(): ScheduleConfig { return JSON.parse(JSON.stringify(_cfg)); }
 export function applyConfig(cfg: ScheduleConfig, persist = true) {
   hydrate(cfg);
   if (persist && typeof window !== "undefined") {
@@ -105,6 +97,9 @@ export function applyConfig(cfg: ScheduleConfig, persist = true) {
 }
 export function getYear() { return _cfg.year; }
 export function getDuty(dayIndex: number) { return _cfg.duty?.[String(dayIndex)] || ""; }
+export function roomName(year?: number) {
+  return _cfg.roomName?.trim() || `GM02-${year ?? _cfg.year}`;
+}
 
 export type DaySlot = { key: string; subjectId: string; periods: number[]; timeLabel: string };
 
@@ -114,7 +109,7 @@ function same(a: string, b: string) {
 }
 
 export function getSubjectsForDay(dayIndex: number): DaySlot[] {
-  const day = _cfg.timetable[String(dayIndex)];
+  const day = _cfg.timetable?.[String(dayIndex)];
   if (!day) return [];
   const out: DaySlot[] = [];
   Object.keys(day).map(Number).sort((a, b) => a - b).forEach((p) => {
