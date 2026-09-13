@@ -35,7 +35,8 @@ export default function AdminPage() {
 
   return (
     <main className="p-5 pb-24">
-      <h1 className="text-xl font-bold mb-4">🛠 จัดการห้องเรียน</h1>
+              <h1 className="mt-1 text-xl font-bold">จัดการห้องเรียน 🛠</h1>
+
       
            {tab === "room" && (
         <div className="space-y-3 px-5">
