@@ -72,11 +72,13 @@ export async function pullAll() {
   const me = cachedMe();
   if (!hasSupabase() || !me || !navigator.onLine) return;
   try {
-    const c = sb();
+        const c = sb();
+    if (!me.roomId) return;
     const [{ data: hw, error }, { data: comps }] = await Promise.all([
-      c.from("homework").select("*").order("date", { ascending: false }).limit(3000),
+      c.from("homework").select("*").eq("room_id", me.roomId).order("date", { ascending: false }).limit(3000),
       c.from("completions").select("*").eq("user_id", me.id),
     ]);
+
     if (error) { console.warn("[pull]", error); return; }
     if (!hw) return;
 
