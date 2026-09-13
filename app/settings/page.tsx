@@ -2,17 +2,25 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { cachedMe, loadMe, signOut, updateNickname, type Me } from "@/lib/auth";
-import { pullAll, syncNow } from "@/lib/sync";
+import { cachedMe, loadMe, signOut, updateNickname, promoteToAdmin, type Me } from "@/lib/auth";
+import { pullAll, syncNow, bootstrapSchedule } from "@/lib/sync";
 import { getYear, roomName, DAY_NAMES, ALL_DAYS, getDuty } from "@/data/schedule";
+import { loadAll } from "@/lib/storage";
 
 export default function SettingsPage() {
   const [me, setMe] = useState<Me | null>(cachedMe());
   const [nick, setNick] = useState("");
+  const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
     loadMe().then((m) => { setMe(m); setNick(m?.nickname ?? ""); });
+    const r = () => { setMe(cachedMe()); setCount(Object.keys(loadAll()).length); };
+    r();
+    window.addEventListener("hwnote:update", r);
+    return () => window.removeEventListener("hwnote:update", r);
   }, []);
 
   if (!me) return <div className="p-16 text-center text-sm text-slate-400">กำลังโหลด…</div>;
@@ -21,7 +29,7 @@ export default function SettingsPage() {
     <main>
       <header className="rounded-b-3xl bg-gradient-to-br from-indigo-500 to-sky-400 px-5 pb-6 pt-8 text-white">
         <h1 className="text-xl font-bold">ตั้งค่า ⚙️</h1>
-        <p className="text-xs opacity-85">ห้อง {roomName(getYear())}</p>
+        <p className="text-xs opacity-85">ห้อง {roomName()} · ปีการศึกษา {getYear()}</p>
       </header>
 
       <div className="space-y-4 px-5 py-5">
@@ -30,15 +38,17 @@ export default function SettingsPage() {
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-xl">👤</div>
             <div>
               <p className="font-semibold text-slate-800">{me.nickname}</p>
-              <p className="text-[11px] text-slate-400">@{me.username}{me.isAdmin && " · ผู้ดูแล"}</p>
+              <p className="text-[11px] text-slate-400">@{me.username}{me.isAdmin && " · 🛠 ผู้ดูแล"}</p>
             </div>
           </div>
           <label className="mb-1.5 block text-xs font-semibold text-slate-600">ชื่อเล่นที่แสดงตอนจด</label>
           <div className="flex gap-2">
             <input value={nick} onChange={(e) => setNick(e.target.value)}
               className="min-w-0 flex-1 rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400" />
-            <button onClick={async () => { await updateNickname(nick); setMe({ ...me, nickname: nick }); setMsg("บันทึกแล้ว ✅"); }}
-              className="shrink-0 rounded-xl bg-indigo-500 px-4 text-sm font-semibold text-white">บันทึก</button>
+            <button onClick={async () => {
+              try { await updateNickname(nick); setMe({ ...me, nickname: nick }); setMsg("บันทึกชื่อแล้ว ✅"); }
+              catch (e) { setErr(e instanceof Error ? e.message : "ผิดพลาด"); }
+            }} className="shrink-0 rounded-xl bg-indigo-500 px-4 text-sm font-semibold text-white">บันทึก</button>
           </div>
         </div>
 
@@ -52,29 +62,59 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
-          {me.isAdmin && <Link href="/admin" className="mt-3 block text-center text-[11px] text-indigo-500 underline">แก้ไขเวร</Link>}
         </div>
 
-        {me.isAdmin && (
+        {me.isAdmin ? (
           <Link href="/admin" className="card flex items-center gap-3 p-4 active:bg-slate-50">
             <span className="text-xl">🛠</span>
             <div className="flex-1">
               <p className="text-sm font-semibold text-slate-800">จัดการตารางเรียน</p>
-              <p className="text-[11px] text-slate-400">แก้วิชา · เวร · เปลี่ยนปีการศึกษา</p>
+              <p className="text-[11px] text-slate-400">แก้วิชา · เวรจด · ชื่อห้อง · เปลี่ยนปีการศึกษา</p>
             </div>
             <span className="text-slate-300">›</span>
           </Link>
+        ) : (
+          <div className="card p-4">
+            <p className="mb-1 text-sm font-semibold text-slate-800">🔑 ปลดล็อกสิทธิ์ผู้ดูแล</p>
+            <p className="mb-2 text-[11px] text-slate-400">ใส่รหัสผู้ดูแลเพื่อแก้ตารางเรียนได้</p>
+            <div className="flex gap-2">
+              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="รหัสผู้ดูแล"
+                className="min-w-0 flex-1 rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400" />
+              <button onClick={async () => {
+                setErr(""); setMsg("");
+                try { const m = await promoteToAdmin(code); setMe(m); setMsg("ปลดล็อกสำเร็จ ✅"); setCode(""); }
+                catch (e) { setErr(e instanceof Error ? e.message : "ผิดพลาด"); }
+              }} className="shrink-0 rounded-xl bg-slate-800 px-4 text-sm font-semibold text-white">ปลดล็อก</button>
+            </div>
+          </div>
         )}
 
         <div className="card space-y-2 p-4">
-          <button onClick={() => { void pullAll(); void syncNow(); setMsg("ซิงก์แล้ว ✅"); }}
-            className="w-full rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700">🔄 ซิงก์ข้อมูลใหม่</button>
+          <button onClick={async () => {
+            setMsg("กำลังซิงก์…");
+            await bootstrapSchedule(); await pullAll(); await syncNow();
+            setCount(Object.keys(loadAll()).length);
+            setMsg("ซิงก์เรียบร้อย ✅");
+          }} className="w-full rounded-xl bg-slate-100 py-2.5 text-sm font-semibold text-slate-700">🔄 ซิงก์ข้อมูลใหม่</button>
           <button onClick={async () => { await signOut(); location.href = "/"; }}
             className="w-full rounded-xl py-2 text-xs text-rose-500">ออกจากระบบ</button>
         </div>
 
+        <div className="card space-y-1.5 p-4 text-[11px] text-slate-500">
+          <p className="mb-1 font-semibold text-slate-700">🔧 ตรวจสอบระบบ</p>
+          <Row k="การบ้านในเครื่อง" v={`${count} รายการ`} />
+          <Row k="ปีการศึกษาที่โหลด" v={String(getYear())} />
+          <Row k="ชื่อห้อง" v={roomName()} />
+          <Row k="สิทธิ์" v={me.isAdmin ? "ผู้ดูแล" : "สมาชิก"} />
+        </div>
+
         {msg && <p className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-700">{msg}</p>}
+        {err && <p className="rounded-xl bg-rose-50 p-3 text-xs text-rose-600">{err}</p>}
       </div>
     </main>
   );
+}
+
+function Row({ k, v }: { k: string; v: string }) {
+  return <div className="flex justify-between"><span>{k}</span><span className="font-medium text-slate-700">{v}</span></div>;
 }
