@@ -6,9 +6,8 @@ import { toBlob } from "html-to-image";
 import {
   SUBJECTS, DAY_NAMES, getSubjectsForDay, getDuty, roomName, getYear,
 } from "@/data/schedule";
-import {
-  loadAll, toDateKey, fromDateKey, toThaiDate, toThaiShort, type HomeworkEntry,
-} from "@/lib/storage";
+import { loadAll, findEntry, toDateKey, fromDateKey, toThaiDate, toThaiShort, type HomeworkEntry } from "@/lib/storage";
+
 
 /* ---------- สีประจำวัน ---------- */
 type DayTheme = { bg: string; head: string; row: string; accent: string; soft: string; emoji: string };
@@ -69,10 +68,10 @@ function ExportInner() {
     return list;
   }, [today]);
 
-  const rowsOf = (key: string) => {
+    const rowsOf = (key: string) => {
     const dow = dowOf(key);
     return getSubjectsForDay(dow).map((s) => {
-      const e = entries[`${key}__${s.key}`];
+      const e = findEntry(entries, key, s.key, s.subjectId);
       return {
         subject: SUBJECTS[s.subjectId]?.name ?? "-",
         classwork: e?.classwork?.trim() || "-",
@@ -89,10 +88,10 @@ function ExportInner() {
   const fileName = `การบ้าน-${toThaiDate(dateKey).replace(/\//g, "-")}.png`;
 
   /* ---------- ชื่อคนจด ---------- */
-  const writers = useMemo(() => {
+    const writers = useMemo(() => {
     const names = new Set<string>();
     getSubjectsForDay(dayIndex).forEach((s) => {
-      const w = entries[`${dateKey}__${s.key}`]?.updatedBy?.trim();
+      const w = findEntry(entries, dateKey, s.key, s.subjectId)?.updatedBy?.trim();
       if (w) names.add(w);
     });
     const list = [...names];
