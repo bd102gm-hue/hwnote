@@ -97,8 +97,22 @@ export function applyConfig(cfg: ScheduleConfig, persist = true) {
 }
 export function getYear() { return _cfg.year; }
 export function getDuty(dayIndex: number) { return _cfg.duty?.[String(dayIndex)] || ""; }
-export function roomName(year?: number) {
-  return _cfg.roomName?.trim() || `GM02-${year ?? _cfg.year}`;
+
+/* ---------- ข้อมูลห้อง (ตั้งจาก auth) ---------- */
+let _room = { code: "", school: "", className: "" };
+
+export function setRoomInfo(r: { code?: string; school?: string; className?: string }) {
+  _room = { ..._room, ...r };
+}
+export function getRoomInfo() { return { ..._room }; }
+export function roomName() {
+  return _room.className?.trim() || "ห้องเรียน";
+}
+export function schoolName() { return _room.school?.trim() || ""; }
+export function roomCode() { return _room.code || ""; }
+export function fullRoomLabel() {
+  const s = schoolName();
+  return s ? `${s} · ${roomName()}` : roomName();
 }
 
 
