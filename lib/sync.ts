@@ -108,15 +108,15 @@ export async function pullAll() {
 
 /* ---------------- realtime ---------------- */
 export function subscribeAll() {
-  if (!hasSupabase() || !cachedMe()) return () => {};
+  const me = cachedMe();
+  if (!hasSupabase() || !me?.roomId) return () => {};
   const c = sb();
-  const ch = c.channel("gm02")
-    .on("postgres_changes", { event: "*", schema: "public", table: "homework" }, () => void pullAll())
-    .on("postgres_changes", { event: "*", schema: "public", table: "schedules" }, () => void bootstrapSchedule())
+  const ch = c.channel(`room-${me.roomId}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "homework", filter: `room_id=eq.${me.roomId}` }, () => void pullAll())
+    .on("postgres_changes", { event: "*", schema: "public", table: "schedules", filter: `room_id=eq.${me.roomId}` }, () => void bootstrapSchedule())
     .subscribe();
   return () => { void c.removeChannel(ch); };
 }
-
 /* ---------------- ตารางเรียน ---------------- */
 /** โหลด "ปีล่าสุดบนเซิร์ฟเวอร์" เป็นหลักเสมอ — ทุกเครื่องจะตรงกัน */
 export async function bootstrapSchedule() {
