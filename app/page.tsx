@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { SUBJECTS, DAY_NAMES, getSubjectsForDay, getDuty, roomName, getYear } from "@/data/schedule";
+import { SUBJECTS, DAY_NAMES, getSubjectsForDay, getDuty, roomName } from "@/data/schedule";
 import { loadAll, bucketize, toDateKey, toThaiDate, toThaiShort, dueLabel, type Buckets, type HomeworkEntry } from "@/lib/storage";
 import { cachedMe } from "@/lib/auth";
 import { askPermission, notifyState } from "@/lib/notify";
@@ -10,13 +10,14 @@ import { askPermission, notifyState } from "@/lib/notify";
 export default function HomePage() {
   const [today, setToday] = useState("");
   const [b, setB] = useState<Buckets | null>(null);
-  const [perm, setPerm] = useState<string>("default");
+  const [perm, setPerm] = useState("default");
+  const [, tick] = useState(0);
 
   useEffect(() => {
     const t = toDateKey(new Date());
     setToday(t);
     setPerm(notifyState());
-    const refresh = () => setB(bucketize(loadAll(), t));
+    const refresh = () => { setB(bucketize(loadAll(), t)); tick((n) => n + 1); };
     refresh();
     window.addEventListener("hwnote:update", refresh);
     return () => window.removeEventListener("hwnote:update", refresh);
@@ -28,17 +29,16 @@ export default function HomePage() {
   const slots = getSubjectsForDay(dow);
   const me = cachedMe();
   const duty = getDuty(dow);
-  const urgentCount = b.overdue.length + b.urgent.length;
+  const urgent = b.overdue.length + b.urgent.length;
 
   return (
     <main>
       <header className="rounded-b-3xl bg-gradient-to-br from-indigo-500 to-sky-400 px-5 pb-6 pt-8 text-white">
-        <p className="text-xs opacity-85">{roomName(getYear())}</p>
+        <p className="text-xs opacity-85">{roomName()}</p>
         <h1 className="text-xl font-bold">สวัสดี {me?.nickname ?? ""} 👋</h1>
         <p className="mt-1 text-xs opacity-85">
           วัน{DAY_NAMES[dow]} · {toThaiDate(today)}{duty && ` · เวรจด: ${duty}`}
         </p>
-
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <Stat n={b.overdue.length} label="เลยกำหนด" />
           <Stat n={b.urgent.length} label="วันนี้/พรุ่งนี้" />
@@ -47,12 +47,9 @@ export default function HomePage() {
       </header>
 
       <div className="space-y-4 px-5 py-5">
-        {/* เปิดแจ้งเตือน */}
         {perm === "default" && (
-          <button
-            onClick={async () => setPerm(String(await askPermission()))}
-            className="card flex w-full items-center gap-3 p-4 text-left active:bg-slate-50"
-          >
+          <button onClick={async () => setPerm(String(await askPermission()))}
+            className="card flex w-full items-center gap-3 p-4 text-left active:bg-slate-50">
             <span className="text-xl">🔔</span>
             <div className="flex-1">
               <p className="text-sm font-semibold text-slate-800">เปิดแจ้งเตือนงานใกล้ส่ง</p>
@@ -62,11 +59,11 @@ export default function HomePage() {
           </button>
         )}
 
-        {urgentCount > 0 && (
+        {urgent > 0 && (
           <div className="rounded-2xl bg-gradient-to-r from-rose-500 to-orange-400 p-4 text-white shadow-lg shadow-rose-100">
-            <p className="text-sm font-bold">⏰ มีงานต้องส่ง {urgentCount} ชิ้น</p>
+            <p className="text-sm font-bold">⏰ มีงานต้องส่ง {urgent} ชิ้น</p>
             <p className="mt-0.5 text-[11px] opacity-90">
-              {b.overdue.length > 0 && `เลยกำหนด ${b.overdue.length} · `}ใกล้ถึงกำหนดแล้ว
+              {b.overdue.length > 0 ? `เลยกำหนด ${b.overdue.length} ชิ้น · ` : ""}รีบเคลียร์นะ
             </p>
           </div>
         )}
@@ -78,13 +75,13 @@ export default function HomePage() {
 
         {b.total === 0 && (
           <div className="card p-10 text-center">
-            <div className="text-4xl">🎉</div>
+            <div className="text-4xl">📭</div>
             <p className="mt-3 font-semibold text-slate-700">ยังไม่มีการบ้านในระบบ</p>
-            <p className="mt-1 text-xs text-slate-400">กดแท็บ “จด” เพื่อเริ่มบันทึก</p>
+            <Link href="/homework" className="mt-2 inline-block text-xs text-indigo-500 underline">ไปหน้าจดการบ้าน ›</Link>
           </div>
         )}
 
-        {b.total > 0 && urgentCount === 0 && b.week.length === 0 && b.noDue.length === 0 && (
+        {b.total > 0 && urgent === 0 && b.week.length === 0 && b.noDue.length === 0 && (
           <div className="card p-10 text-center">
             <div className="text-4xl">✨</div>
             <p className="mt-3 font-semibold text-slate-700">เคลียร์งานหมดแล้ว!</p>
@@ -92,7 +89,6 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* คาบวันนี้ */}
         {slots.length > 0 && (
           <div className="card overflow-hidden">
             <div className="flex items-center justify-between px-4 py-2.5">
@@ -154,11 +150,7 @@ function Section({ title, items, today, tone }: {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-semibold text-slate-800">{subj?.name ?? "วิชา"}</span>
-                    {lb && (
-                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-semibold ${TONE[tone]}`}>
-                        {lb.text}
-                      </span>
-                    )}
+                    {lb && <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-semibold ${TONE[tone]}`}>{lb.text}</span>}
                   </div>
                   <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">📝 {e.homework}</p>
                   <p className="mt-1 text-[10px] text-slate-400">
