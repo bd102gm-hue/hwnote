@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { SUBJECTS, DAY_NAMES, getSubjectsForDay, getDuty, roomName } from "@/data/schedule";
+import { SUBJECTS, DAY_NAMES, getSubjectsForDay, getDuty, roomName, schoolName } from "@/data/schedule";
+
 import { loadAll, bucketize, toDateKey, toThaiDate, toThaiShort, dueLabel, type Buckets, type HomeworkEntry } from "@/lib/storage";
 import { cachedMe } from "@/lib/auth";
 import { askPermission, notifyState } from "@/lib/notify";
@@ -34,7 +35,8 @@ export default function HomePage() {
   return (
     <main>
       <header className="rounded-b-3xl bg-gradient-to-br from-indigo-500 to-sky-400 px-5 pb-6 pt-8 text-white">
-        <p className="text-xs opacity-85">{roomName()}</p>
+                <p className="text-xs opacity-85">{schoolName() && `${schoolName()} · `}{roomName()}</p>
+
         <h1 className="text-xl font-bold">สวัสดี {me?.nickname ?? ""} 👋</h1>
         <p className="mt-1 text-xs opacity-85">
           วัน{DAY_NAMES[dow]} · {toThaiDate(today)}{duty && ` · เวรจด: ${duty}`}
