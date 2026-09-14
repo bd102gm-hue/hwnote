@@ -300,7 +300,7 @@ function ExportInner() {
                 การบ้านวัน{DAY_NAMES[dayIndex]}
               </h2>
               <p className="text-[11px] font-medium" style={{ color: "#64748b" }}>
-                {roomName(getYear())} · HomeworkNote
+                {roomName()} · HomeworkNote
               </p>
             </div>
             <div
