@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toBlob } from "html-to-image";
 import {
-  SUBJECTS, DAY_NAMES, getSubjectsForDay, getDuty, roomName, getYear,
+  SUBJECTS, DAY_NAMES, getSubjectsForDay, getDuty, roomName,
 } from "@/data/schedule";
 import { loadAll, findEntry, toDateKey, fromDateKey, toThaiDate, toThaiShort, type HomeworkEntry } from "@/lib/storage";
 
