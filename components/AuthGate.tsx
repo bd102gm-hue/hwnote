@@ -60,17 +60,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
         {mode === "create" && (
           <>
-            <Input label="🏫 ชื่อโรงเรียน" value={school} onChange={setSchool} placeholder="เช่น โรงเรียนสวนกุหลาบ" />
-            <Input label="🎓 ชื่อชั้น / ห้อง" value={cls} onChange={setCls} placeholder="เช่น ม.2/2" />
-          </>
-        )}
-        {mode === "join" && (
-          <Input label="🔑 รหัสห้อง (ขอจากเพื่อน)" value={code} onChange={(v) => setCode(v.toUpperCase())} placeholder="เช่น K7XQ2M" />
-        )}
-
-        <Input label="ชื่อผู้ใช้ (ภาษาอังกฤษ)" value={u} onChange={setU} placeholder="mind2569" />
-        {mode !== "in" && <Input label="ชื่อเล่น (เพื่อนจะเห็นชื่อนี้)" value={nick} onChange={setNick} placeholder="มายด์" />}
-        <Input label="รหัสผ่าน" value={p} onChange={setP} type="password" placeholder="อย่างน้อย 6 ตัว" />
+            
+        <Input label="รหัสนักเรียน" value={u} onChange={setU}  placeholder="อย่างน้อย 5 ตัว" />
 
         {err && <p className="rounded-xl bg-rose-50 p-2.5 text-xs text-rose-600">{err}</p>}
 
