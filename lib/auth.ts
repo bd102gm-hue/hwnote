@@ -43,7 +43,7 @@ function genCode() {
 
 async function createAuthUser(username: string, password: string) {
   const u = username.trim().toLowerCase();
-  if (!/^[a-z0-9_.]{3,20}$/.test(u)) throw new Error("ชื่อผู้ใช้ใช้ a-z 0-9 _ . ยาว 3–20 ตัว");
+  if (!/^[0-9_.]{5}$/.test(u)) throw new Error("ชื่อผู้ใช้ใช้ 0-9 _ . ยาว 5 ตัว");
   if (password.length < 6) throw new Error("รหัสผ่านอย่างน้อย 6 ตัว");
   const { data, error } = await sb().auth.signUp({ email: mail(u), password });
   if (error) throw new Error(error.message.includes("already") ? "มีชื่อผู้ใช้นี้แล้ว" : error.message);
