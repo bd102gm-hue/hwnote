@@ -17,6 +17,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { loadMe().then((m) => { setMe(m); setReady(true); }); }, []);
 
+// เมื่อ Login สำเร็จหรือดึงข้อมูล Profile
+const { data: profile } = await sb().from('profiles').select('nickname').eq('id', user.id).single();
+// ใช้ profile.nickname แสดงผลในหน้าแอป
+  
   const submit = async () => {
     setBusy(true); setErr("");
     try {
