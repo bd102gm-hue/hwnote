@@ -1,105 +1,80 @@
 "use client";
+import { useState } from "react";
+import { lookupStudent, studentSignIn, firstTimeSetup } from "@/lib/auth";
 
-import { useEffect, useState } from "react";
-import { hasSupabase, supabaseConfigError } from "@/lib/supabase";
-import { loadMe, signIn, signUpCreateRoom, signUpJoinRoom, type Me } from "@/lib/auth";
+export default function AuthGate() {
+  const [step, setStep] = useState<"id" | "login" | "setup">("id");
+  const [id, setId] = useState("");
+  const [nick, setNick] = useState("");
+  const [pass, setPass] = useState("");
+  const [pass2, setPass2] = useState("");
+  const [birth, setBirth] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
 
-type Mode = "in" | "join" | "create";
+  const box = "w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400";
+  const btn = "w-full rounded-xl bg-indigo-500 p-3 text-sm font-bold text-white disabled:opacity-50";
 
-export default function AuthGate({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
-  const [me, setMe] = useState<Me | null>(null);
-  const [mode, setMode] = useState<Mode>("in");
-  const [u, setU] = useState(""); const [p, setP] = useState("");
-  const [nick, setNick] = useState(""); const [code, setCode] = useState("");
-  const [school, setSchool] = useState(""); const [cls, setCls] = useState("");
-  const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
-
-  useEffect(() => { loadMe().then((m) => { setMe(m); setReady(true); }); }, []);
-
-// เมื่อ Login สำเร็จหรือดึงข้อมูล Profile
-const { data: profile } = await sb().from('profiles').select('nickname').eq('id', user.id).single();
-// ใช้ profile.nickname แสดงผลในหน้าแอป
-  
-  const submit = async () => {
+  const checkId = async () => {
     setBusy(true); setErr("");
     try {
-      const m =
-        mode === "in" ? await signIn(u, p)
-        : mode === "join" ? await signUpJoinRoom(u, nick, p, code)
-        : await signUpCreateRoom(u, nick, p, school, cls);
-      setMe(m);
-      window.dispatchEvent(new Event("hwnote:update"));
-    } catch (e) { setErr(e instanceof Error ? e.message : "เกิดข้อผิดพลาด"); }
-    finally { setBusy(false); }
+      const s = await lookupStudent(id);
+      if (!s) throw new Error("ไม่พบรหัสนักเรียนนี้ในระบบ");
+      setNick(s.nickname);
+      setStep(s.registered ? "login" : "setup");
+    } catch (e: any) { setErr(e.message); }
+    setBusy(false);
   };
 
-  const valid =
-    mode === "in" ? u && p
-    : mode === "join" ? u && p && nick && code.trim().length >= 4
-    : u && p && nick && cls.trim();
+  const doLogin = async () => {
+    setBusy(true); setErr("");
+    try { await studentSignIn(id, pass); location.reload(); }
+    catch (e: any) { setErr(e.message); }
+    setBusy(false);
+  };
 
-  if (!hasSupabase())
-    return <Center>⚠️ ยังไม่ได้ตั้งค่า Supabase<br /><span className="text-xs text-slate-400">{supabaseConfigError()}</span></Center>;
-  if (!ready) return <Center>กำลังโหลด…</Center>;
-  if (me) return <>{children}</>;
+  const doSetup = async () => {
+    if (pass.length < 6) return setErr("รหัสผ่านต้องยาวอย่างน้อย 6 ตัว");
+    if (pass !== pass2) return setErr("รหัสผ่านสองช่องไม่ตรงกัน");
+    setBusy(true); setErr("");
+    try { await firstTimeSetup(id, birth, pass); location.reload(); }
+    catch (e: any) { setErr(e.message); }
+    setBusy(false);
+  };
 
   return (
-    <main className="flex min-h-screen flex-col justify-center px-6 py-10">
-      <div className="mb-6 text-center">
-        <div className="text-5xl">📚</div>
-        <h1 className="mt-2 text-2xl font-bold text-slate-800">HomeworkNote</h1>
-        <p className="text-sm text-slate-400">จดการบ้านร่วมกันทั้งห้อง</p>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-5">
+      <div className="w-full max-w-sm space-y-3 rounded-2xl bg-white p-6 shadow-sm">
+        <h1 className="text-lg font-bold text-slate-800">HomeworkNote</h1>
+
+        {step === "id" && (<>
+          <p className="text-xs text-slate-500">กรอกรหัสนักเรียน 5 หลัก</p>
+          <input className={box} inputMode="numeric" placeholder="เช่น 48285"
+            value={id} onChange={(e) => setId(e.target.value)} />
+          <button className={btn} disabled={busy || !id} onClick={checkId}>ถัดไป</button>
+        </>)}
+
+        {step === "login" && (<>
+          <p className="text-xs text-slate-500">สวัสดี <b className="text-indigo-600">{nick}</b> 👋 กรอกรหัสผ่านของคุณ</p>
+          <input className={box} type="password" placeholder="รหัสผ่าน"
+            value={pass} onChange={(e) => setPass(e.target.value)} />
+          <button className={btn} disabled={busy || !pass} onClick={doLogin}>เข้าสู่ระบบ</button>
+          <button className="w-full text-[11px] text-slate-400" onClick={() => setStep("id")}>← เปลี่ยนรหัสนักเรียน</button>
+        </>)}
+
+        {step === "setup" && (<>
+          <p className="text-xs text-slate-500">สวัสดี <b className="text-indigo-600">{nick}</b> 👋 ยืนยันวันเกิดเพื่อตั้งรหัสผ่านครั้งแรก</p>
+          <input className={box} type="date" value={birth} onChange={(e) => setBirth(e.target.value)} />
+          <input className={box} type="password" placeholder="ตั้งรหัสผ่านใหม่ (6 ตัวขึ้นไป)"
+            value={pass} onChange={(e) => setPass(e.target.value)} />
+          <input className={box} type="password" placeholder="ยืนยันรหัสผ่านอีกครั้ง"
+            value={pass2} onChange={(e) => setPass2(e.target.value)} />
+          <button className={btn} disabled={busy || !birth} onClick={doSetup}>บันทึกและเข้าใช้งาน</button>
+          <button className="w-full text-[11px] text-slate-400" onClick={() => setStep("id")}>← ย้อนกลับ</button>
+        </>)}
+
+        {err && <p className="text-center text-xs text-rose-500">{err}</p>}
       </div>
-
-      <div className="card space-y-3 p-5">
-        <div className="flex rounded-xl bg-slate-100 p-1">
-          {([["in","เข้าสู่ระบบ"],["join","เข้าร่วมห้อง"],["create","สร้างห้อง"]] as const).map(([k, l]) => (
-            <button key={k} onClick={() => { setMode(k); setErr(""); }}
-              className={`flex-1 rounded-lg py-2 text-[11px] font-semibold ${mode===k?"bg-white text-indigo-600 shadow":"text-slate-500"}`}>
-              {l}
-            </button>
-          ))}
-        </div>
-
-        {mode === "create" && (
-          <>
-            
-        <Input label="รหัสนักเรียน" value={u} onChange={setU}  placeholder="อย่างน้อย 5 ตัว" />
-
-        {err && <p className="rounded-xl bg-rose-50 p-2.5 text-xs text-rose-600">{err}</p>}
-
-        <button onClick={submit} disabled={busy || !valid}
-          className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-sky-400 py-3 text-sm font-semibold text-white disabled:opacity-40">
-          {busy ? "กำลังทำงาน…"
-            : mode === "in" ? "เข้าสู่ระบบ"
-            : mode === "join" ? "เข้าร่วมห้อง"
-            : "สร้างห้องของฉัน"}
-        </button>
-      </div>
-
-      <p className="mt-4 text-center text-[11px] leading-relaxed text-slate-400">
-        {mode === "create" ? "คุณจะเป็นผู้ดูแลห้อง แก้ตารางเรียนและตั้งเวรจดได้"
-          : mode === "join" ? "ขอรหัสห้องจากหัวหน้าห้องหรือเพื่อนที่ใช้อยู่แล้ว"
-          : "ยังไม่มีบัญชี? เลือกแท็บ “เข้าร่วมห้อง” หรือ “สร้างห้อง”"}
-      </p>
-    </main>
-  );
-}
-
-function Input({ label, value, onChange, type = "text", placeholder }: {
-  label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string;
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-semibold text-slate-600">{label}</label>
-      <input type={type} value={value} placeholder={placeholder} autoCapitalize="none"
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-400" />
     </div>
   );
-}
-
-function Center({ children }: { children: React.ReactNode }) {
-  return <div className="flex min-h-screen items-center justify-center px-8 text-center text-sm text-slate-500">{children}</div>;
 }
