@@ -1,7 +1,16 @@
 "use client";
 import { useState, useEffect } from "react";
-import { sb } from "@/lib/auth"; // ตรวจสอบว่า import sb ถูกต้อง
-import { adminResetPassword, deleteMember } from "@/lib/auth";
+// เปลี่ยนจาก import { sb } จาก ... เป็น import { sb, adminResetPassword, deleteMember }
+import { sb, adminResetPassword, deleteMember } from "@/lib/auth";
+
+// ใน useEffect ให้เปลี่ยนจาก sb() เป็น sb (ไม่มีวงเล็บ)
+useEffect(() => {
+  const fetchMembers = async () => {
+    const { data } = await sb.from("students").select("*").order("username"); // ลบ () หลัง sb ออก
+    setMembers(data || []);
+  };
+  fetchMembers();
+}, []);import { adminResetPassword, deleteMember } from "@/lib/auth";
 
 export default function AdminPage() {
   const [tab, setTab] = useState<"tt" | "members">("members");
