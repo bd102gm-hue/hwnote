@@ -68,6 +68,11 @@ export async function firstTimeSetup(
   await sb().from("students").update({ registered: true }).eq("username", studentId.trim());
   return stu.nickname;
 }
+export async function deleteMember(username: string) {
+  const { error } = await sb().from("students").delete().eq("username", username);
+  if (error) throw new Error(error.message);
+  return true;
+}
 
 // ปุ่มรีเซ็ตฝั่ง Admin
 export async function adminResetPassword(studentId: string) {
