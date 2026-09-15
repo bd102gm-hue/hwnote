@@ -1,4 +1,4 @@
-"use client";
+"use client"; 
 import { useState, useEffect } from "react";
 // เปลี่ยนจาก import { sb } จาก ... เป็น import { sb, adminResetPassword, deleteMember }
 import { sb, adminResetPassword, deleteMember } from "@/lib/auth";
